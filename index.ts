@@ -50,9 +50,25 @@ zeebe.createWorker({
   },
 });
 
+// ---- Worker: vertragErstellen (Service Task) ----
+zeebe.createWorker({
+  taskType: "vertragErstellen",
+  taskHandler: async (job) => {
+    return job.complete();
+  },
+});
+
 // ---- Worker: ZusageNachrichtVersenden (Message End Event) ----
 zeebe.createWorker({
   taskType: "ZusageNachrichtVersenden",
+  taskHandler: async (job) => {
+    return job.complete();
+  },
+});
+
+// ---- Worker: stornierungsbestätigung (Message End Event) ----
+zeebe.createWorker({
+  taskType: "stornierungsbestätigung",
   taskHandler: async (job) => {
     return job.complete();
   },
