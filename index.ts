@@ -1,5 +1,6 @@
 import { config } from "dotenv";
 import { Camunda8 } from "@camunda8/sdk";
+import { toZonedTime, format } from "date-fns-tz";
 
 config();
 
@@ -66,11 +67,33 @@ zeebe.createWorker({
   },
 });
 
-// ---- Worker: stornierungsbestätigung (Message End Event) ----
+// ---- Worker: co2TimeShiftKreditwürdigkeit (Service Task) ----
 zeebe.createWorker({
-  taskType: "stornierungsbestätigung",
+  taskType: "co2TimeShiftKreditwürdigkeit",
   taskHandler: async (job) => {
-    return job.complete();
+    const apiKey = process.env.CARBON_AWARE_API_KEY!;
+    const region = "de";
+    const minutes = Number(job.variables.minutes);
+
+    const resp = await fetch(
+      `https://forecast.carbon-aware-computing.com/emissions/forecasts/current?location=${region}&windowSize=${minutes}`,
+      { headers: { "x-api-key": apiKey } }
+    );
+
+    if (resp.status === 403) {
+      throw new Error("Fehlender oder ungültiger API-Key.");
+    }
+
+    const data = await resp.json();
+    const utcTimestamp: string = data[0].optimalDataPoints[0].timestamp;
+    const utcDate = new Date(utcTimestamp);
+    const berlinDate = toZonedTime(utcDate, "Europe/Berlin");
+    const bestStartBerlin = format(berlinDate, "yyyy-MM-dd'T'HH:mm:ssXXX", {
+      timeZone: "Europe/Berlin",
+    });
+    console.log(bestStartBerlin);
+
+    return job.complete({ variables: { bestStart: bestStartBerlin } });
   },
 });
 
